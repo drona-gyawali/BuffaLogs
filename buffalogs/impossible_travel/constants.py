@@ -118,3 +118,38 @@ class ComparisonType(models.TextChoices):
     LOWER = "lower", _("The value is lower than the given threshold")
     EQUAL = "equal", _("The value and the given threshold are equal")
     HIGHER = "higher", _("The value is higher than the given threshold")
+
+
+class AlertFrequencyType(models.TextChoices):
+    """Types of notification frequencies for alerts
+
+    * IMMEDIATE: Notifications are sent immediately when an alert is triggered
+    * DAILY: Notifications are sent as a daily digest
+    * WEEKLY: Notifications are sent as a weekly digest
+    """
+
+    IMMEDIATE = "immediate", _("Alert are sent immediate")
+    DAILY = "daily", _("Alert are sent as a daily digest")
+    WEEKLY = "weekly", _("Alert are sent as a weekly digest")
+
+class AlertChannelType(models.TextChoices):
+    """Types of channels through which alerts can be sent
+
+    * SLACK: Alerts sent via Slack
+    * WEBHOOK: Alerts sent via webhooks
+    * HTTPREQUEST: Alerts sent via HTTP requests
+    * TELEGRAM: Alerts sent via Telegram
+    * EMAIL: Alerts sent via email
+    * PUSHOVER: Alerts sent via Pushover
+    * DISCORD: Alerts sent via Discord
+    * MICROSOFTTEAMS: Alerts sent via Microsoft Teams
+    """
+
+    SLACK = "slack", _("Alerts sent via Slack")
+    WEBHOOK = "webhooks", _("Alerts sent via webhooks")
+    HTTPREQUEST = "http_request", _("Alerts sent via HTTP requests")
+    TELEGRAM = "telegram", _("Alerts sent via Telegram")
+    EMAIL = "email", _("Alerts sent via email")
+    PUSHOVER = "pushover", _("Alerts sent via Pushover")
+    DISCORD = "discord", _("Alerts sent via Discord")
+    MICROSOFTTEAMS = "microsoftteams", _("Alerts sent via Microsoft Teams")

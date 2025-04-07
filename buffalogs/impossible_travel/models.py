@@ -4,9 +4,9 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from impossible_travel.constants import AlertDetectionType, AlertFilterType, UserRiskScoreType
+from impossible_travel.constants import AlertDetectionType, MinSeverityType, AlertFilterType, UserRiskScoreType, AlertFrequencyType, AlertChannelType
 from impossible_travel.validators import validate_ips_or_network, validate_string_or_regex
-
+from impossible_travel.alerting.base_alerting import BaseAlerting
 
 class User(models.Model):
     risk_score = models.CharField(choices=UserRiskScoreType.choices, max_length=30, null=False, default=UserRiskScoreType.NO_RISK)
@@ -239,3 +239,61 @@ class Config(models.Model):
                 name="valid_alert_filters_choices",
             ),
         ]
+# -> Alert Preference 
+class AlertPreference(models.Model):
+    """
+    Represents user-specific preferences for alert notifications.
+
+    Attributes:
+        user (ForeignKey): Associated user owning the preference.
+        alert (ForeignKey): Linked alert type for the preference.
+        is_active (BooleanField): Indicates if the preference is enabled (default: False).
+        channel (CharField): Notification delivery channel (e.g., email). Defaults to EMAIL.
+        frequency (CharField): Notification frequency (e.g., immediate, daily). Defaults to IMMEDIATE.
+        threshold (PositiveIntegerField): Minimum occurrences to trigger the alert (optional).
+        mute_start (TimeField): Start time for muting notifications (optional).
+        mute_end (TimeField): End time for muting notifications (optional).
+        created_at (DateTimeField): Timestamp of creation (auto-set).
+        updated_at (DateTimeField): Timestamp of last modification (auto-updated).
+
+    Meta:
+        constraints:
+            - Ensures unique preferences for the same user, alert, channel, and frequency.
+            - Allows default preferences (user=None) for specific alert, channel, and frequency.
+
+    Methods:
+        clean: Validates that mute_start is earlier than mute_end if both are set.
+        __str__: Returns a string representation in the format: "<user> → <alert> via <channel_display>".
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_prefs')
+    alert = models.ForeignKey(Alert, on_delete=models.CASCADE, related_name='notification_prefs')
+    is_active = models.BooleanField(default=False)
+    channel = models.CharField(max_length=10, choices=AlertChannelType.choices, default=AlertChannelType.EMAIL, help_text="Delivery channel")
+    frequency = models.CharField(max_length=10, choices=AlertFrequencyType.choices, default=AlertFrequencyType.IMMEDIATE)
+    threshold = models.PositiveIntegerField(null=True, blank=True)
+    mute_start = models.TimeField(null=True, blank=True)
+    mute_end = models.TimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'alert', 'channel', 'frequency'],
+                name='unique_user_alert_pref',
+                condition=models.Q(user__isnull=False)
+            ),
+            models.UniqueConstraint(
+                fields=['alert', 'channel', 'frequency'],
+                name='unique_default_alert_pref',
+                condition=models.Q(user__isnull=True)
+            )
+        ]
+
+    def clean(self):
+        if self.mute_start and self.mute_end and self.mute_start >= self.mute_end:
+            raise ValidationError("Mute start must be before mute end.")
+        super().clean()
+
+    def __str__(self):
+        return f"{self.user} → {self.alert} via {self.get_channel_display()}"
